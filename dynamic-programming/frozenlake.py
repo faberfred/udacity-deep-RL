@@ -65,8 +65,8 @@ class FrozenLakeEnv(discrete.DiscreteEnv):
         self.desc = desc = np.asarray(desc,dtype='c')
         self.nrow, self.ncol = nrow, ncol = desc.shape
 
-        nA = 4
-        nS = nrow * ncol
+        nA = 4              # number of possible actions
+        nS = nrow * ncol    # number of possible spaces
 
         isd = np.array(desc == b'S').astype('float64').ravel()
         isd /= isd.sum()
@@ -75,6 +75,7 @@ class FrozenLakeEnv(discrete.DiscreteEnv):
 
         def to_s(row, col):
             return row*ncol + col
+
         def inc(row, col, a):
             if a==0: # left
                 col = max(col-1,0)
@@ -110,7 +111,7 @@ class FrozenLakeEnv(discrete.DiscreteEnv):
                             done = bytes(newletter) in b'GH'
                             rew = float(newletter == b'G')
                             li.append((1.0, newstate, rew, done))
-        
+
         # obtain one-step dynamics for dynamic programming setting
         self.P = P
 
