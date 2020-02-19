@@ -11,7 +11,7 @@ env = gym.make('CartPole-v1')
 print('action space: ', env.action_space)
 print('observation space', env.observation_space)
 print('upper limit of observation space', env.observation_space.high)
-print('upper limit of observation space', env.observation_space.low)
+print('lower limit of observation space', env.observation_space.low)
 for i_episode in range(20): # 20 episodes
     observation = env.reset() # start the process by calling reset() which returns an initial observation
     for t in range(100): # number of steps within an episode
