@@ -9,11 +9,11 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 BUFFER_SIZE = int(1e5)  # replay buffer size
-BATCH_SIZE = 64         # minibatch size
+BATCH_SIZE = 2          # minibatch size
 GAMMA = 0.99            # discount factor
 TAU = 1e-3              # for soft update of target parameters
 LR = 5e-4               # learning rate 
-UPDATE_EVERY = 4        # how often to update the network
+UPDATE_EVERY = 1        # how often to update the network -> this is variable C within the DQN paper
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -44,6 +44,19 @@ class Agent():
         self.t_step = 0
     
     def step(self, state, action, reward, next_state, done):
+        """Update the relay memory and update everey UPDATE_EVERY steps the weights
+        
+        Params
+        ======
+        
+            state (): 
+            action():
+            reward ():
+            next_state ():
+            done ():
+        
+        
+        """
         # Save experience in replay memory
         self.memory.add(state, action, reward, next_state, done)
         
@@ -54,6 +67,8 @@ class Agent():
             if len(self.memory) > BATCH_SIZE:
                 experiences = self.memory.sample()
                 self.learn(experiences, GAMMA)
+                # return statement for debug purposes
+                # return(self.learn(experiences, GAMMA))
 
     def act(self, state, eps=0.):
         """Returns actions for given state as per current policy.
@@ -63,16 +78,23 @@ class Agent():
             state (array_like): current state
             eps (float): epsilon, for epsilon-greedy action selection
         """
+        # get the state as a torch tensor
         state = torch.from_numpy(state).float().unsqueeze(0).to(device)
+        # set network into evaluation mode -> turn off dropout!
         self.qnetwork_local.eval()
+        # turn off gradient computation outside training mode -> safes memory & computations
         with torch.no_grad():
+            # get the action values due to a forward pass of the state through the network!
             action_values = self.qnetwork_local(state)
+        # set network back into training mode -> turn on dropout!
         self.qnetwork_local.train()
 
         # Epsilon-greedy action selection
         if random.random() > eps:
+            # return the action with the biggest q-value
             return np.argmax(action_values.cpu().data.numpy())
         else:
+            # return a random uniformly distributed value out of the action space
             return random.choice(np.arange(self.action_size))
 
     def learn(self, experiences, gamma):
@@ -87,9 +109,59 @@ class Agent():
 
         ## TODO: compute and minimize the loss
         "*** YOUR CODE HERE ***"
+        
+        # Get max predicted Q values (for next states) from target model
+        # detach(): return a new Tensor (it does not change the current one) that does not share the history of the original Tensor /  detached from the current graph.(no autograd)
+        # .detach() returns a new tensor without history!
+        # torch.max(input, dim, keepdim=False, out=None) -> (Tensor, LongTensor): Returns a namedtuple (values, indices) where values is the maximum value of each row of the input tensor in the given dimension dim. And indices is the index location of each maximum value found (argmax).
+        # .max(1)[0] returns the maximum value of the 1st dimension
+        # torch.unsqueeze(input, dim, out=None) → Tensor: Returns a new tensor with a dimension of size one inserted at the specified position.
+        # .unsqueeze(1) transform the data from a row-vector into a column vector
+        
+        # Q_targets_next_test = self.qnetwork_target(next_states).detach().max(1)[0].unsqueeze(1)
+        # Q_targets_next is a column vector of size BATCH_SIZE with the max action values from each forwarded next_state!
+        Q_targets_next = self.qnetwork_target(next_states).detach().max(1)[0].unsqueeze(1)
+        
+        # Compute Q targets for current states 
+        # if done is 1 there will be no next state -> Q_targets is just the reward
+        # otherwise its the immediate reward + discount factor * the estimated Q_target of the next state
+        # Q_targets is a column vector of size BATCH_SIZE with the computed values of the immediate reward and the Q-values (action-values) of the next state
+        Q_targets = rewards + (gamma * Q_targets_next * (1 - dones))
+
+        # Get expected Q values from local model
+        # torch.gather(input, dim, index, out=None, sparse_grad=False) → Tensor: Gathers values along an axis specified by dim.
+
+        # Q_expected_test = self.qnetwork_local(states).gather(1, actions)
+        
+        # Q_expected_full_values has the Q-values / action values of a pass trough / forward run throug the network qnetwork_local
+        # Q_expected_full_values has dimension 0 = BATCH_SIZE and dimension 1 = size of action space
+        Q_expected_full_values = self.qnetwork_local(states)
+        # gather(1, actions) extracts the values out of Q_expected_full_values at position specified in action! If action has value 3 -> get the value from index 3 out of Q_expected_full_values
+        # Q_expected has dimension 0 = BATCH_SIZE and dimension 1 = 1
+        Q_expected = Q_expected_full_values.gather(1, actions)
+        
+        # Q_expected = self.qnetwork_local(states).gather(1, actions)
+
+        # Compute loss -> use the mean sqared error loss function (from torch.nn.functional)
+        loss = F.mse_loss(Q_expected, Q_targets)
+        # Minimize the loss
+        # Clear the gradients, because backward accumulates the gradients and so they have to be cleared
+        self.optimizer.zero_grad()
+        # calculate the gradients
+        loss.backward()
+        # update the weights / parameter
+        self.optimizer.step()
 
         # ------------------- update target network ------------------- #
-        self.soft_update(self.qnetwork_local, self.qnetwork_target, TAU)                     
+        self.soft_update(self.qnetwork_local, self.qnetwork_target, TAU)          
+        
+        
+
+        # ------------------- update target network ------------------- #
+        self.soft_update(self.qnetwork_local, self.qnetwork_target, TAU)   
+
+        # return statement for debug purposes
+        # return(Q_expected_test)                  
 
     def soft_update(self, local_model, target_model, tau):
         """Soft update model parameters.
