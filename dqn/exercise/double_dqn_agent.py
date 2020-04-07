@@ -9,7 +9,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 BUFFER_SIZE = int(1e5)  # replay buffer size
-BATCH_SIZE = 64         # minibatch size
+BATCH_SIZE = 64       # minibatch size
 GAMMA = 0.99            # discount factor
 TAU = 1e-3              # for soft update of target parameters
 LR = 5e-4               # learning rate 
@@ -107,37 +107,58 @@ class Agent():
         """
         states, actions, rewards, next_states, dones = experiences
 
-        ## TODO: compute and minimize the loss
-        "*** YOUR CODE HERE ***"
+        ## compute and minimize the loss
         
-        # Get max predicted Q values (for next states) from target model
-        # detach(): return a new Tensor (it does not change the current one) that does not share the history of the original Tensor /  detached from the current graph.(no autograd)
-        # .detach() returns a new tensor without history!
-        # torch.max(input, dim, keepdim=False, out=None) -> (Tensor, LongTensor): Returns a namedtuple (values, indices) where values is the maximum value of each row of the input tensor in the given dimension dim. And indices is the index location of each maximum value found (argmax).
-        # .max(1)[0] returns the maximum value of the 1st dimension
-        # torch.unsqueeze(input, dim, out=None) → Tensor: Returns a new tensor with a dimension of size one inserted at the specified position.
-        # .unsqueeze(1) transform the data from a row-vector into a column vector
+        """ Get max predicted Q indices (for next states) from target model
         
-        # Q_targets_next is a column vector of size BATCH_SIZE with the max action values from each forwarded next_state!
-        Q_targets_next = self.qnetwork_target(next_states).detach().max(1)[0].unsqueeze(1)
+            detach(): return a new Tensor (it does not change the current one) that does not share the history of the original Tensor /  detached from the current graph.(no autograd)
+            .detach() returns a new tensor without history!
+            
+            torch.max(input, dim, keepdim=False, out=None) -> (Tensor, LongTensor): Returns a namedtuple (values, indices) where values is the maximum value of each row of the input tensor in the given dimension dim. And indices is the index location of each maximum value found (argmax).
+            .max(1)[0] returns the maximum value of the 1st dimension
+            
+            torch.unsqueeze(input, dim, out=None) → Tensor: Returns a new tensor with a dimension of size one inserted at the specified position.
+            .unsqueeze(1) transform the data from a row-vector into a column vector
+            
+            Q_targets_next is a column vector of size BATCH_SIZE with the max action values from each forwarded next_state!
+       
+        """
+#        Q_targets_next = self.qnetwork_target(next_states).detach().max(1)[0].unsqueeze(1)
+
+        # get the index of the max value but NOT the value from qnetwork_target
+        # Q_targets_next_index = self.qnetwork_target(next_states).detach().max(1)[1].unsqueeze(1)
          # Q_targets_next_test = self.qnetwork_target(next_states).detach().max(1)[0].unsqueeze(1)
         
-        # Compute Q targets for current states 
-        # if done is 1 there will be no next state -> Q_targets is just the reward
-        # otherwise its the immediate reward + discount factor * the estimated Q_target of the next state
-        # Q_targets is a column vector of size BATCH_SIZE with the computed values of the immediate reward and the Q-values (action-values) of the next state
+        # get the index of the max value but NOT the value from qnetwork_local 
+        Q_expected_next_index = self.qnetwork_local(next_states).detach().max(1)[1].unsqueeze(1)
+        
+        Q_targets_next = self.qnetwork_target(next_states).gather(1, Q_expected_next_index)
+        
+        # Q_targets_next = Q_expected_full_values.gather(1, Q_targets_next_index)
+        
+        
+        """ Compute Q targets for current states 
+        
+            if done == 1 there will be no next state -> Q_targets is just the reward
+            otherwise it's the immediate reward + discount factor * the estimated Q_target of the next state
+            Q_targets is a column vector of size BATCH_SIZE with the computed values of the immediate reward and the Q-values (action-values) of the next state
+            
+        """
         Q_targets = rewards + (gamma * Q_targets_next * (1 - dones))
 
-        # Get expected Q values from local model
-        # torch.gather(input, dim, index, out=None, sparse_grad=False) → Tensor: Gathers values along an axis specified by dim.
 
-        # Q_expected_test = self.qnetwork_local(states).gather(1, actions)
+        """ Get expected Q values from local model
         
-        # Q_expected_full_values has the Q-values / action values of a pass trough / forward run throug the network qnetwork_local
-        # Q_expected_full_values has dimension 0 = BATCH_SIZE and dimension 1 = size of action space
+            torch.gather(input, dim, index, out=None, sparse_grad=False) → Tensor: Gathers values along an axis specified by dim.
+            Q_expected_full_values has the Q-values / action values of a pass trough / forward run throug the network qnetwork_local
+            Q_expected_full_values has dimension 0 = BATCH_SIZE and dimension 1 = size of action space
+            
+            gather(1, actions) extracts the values out of Q_expected_full_values at position specified in action! If action has value 3 -> get the value from index 3 out of Q_expected_full_values
+            Q_expected has dimension 0 = BATCH_SIZE and dimension 1 = 1
+        
+        """
+
         Q_expected_full_values = self.qnetwork_local(states)
-        # gather(1, actions) extracts the values out of Q_expected_full_values at position specified in action! If action has value 3 -> get the value from index 3 out of Q_expected_full_values
-        # Q_expected has dimension 0 = BATCH_SIZE and dimension 1 = 1
         Q_expected = Q_expected_full_values.gather(1, actions)
         
         # Q_expected = self.qnetwork_local(states).gather(1, actions)
@@ -156,7 +177,7 @@ class Agent():
         self.soft_update(self.qnetwork_local, self.qnetwork_target, TAU)          
 
         # return statement for debug purposes
-        # return(Q_expected_test)                  
+        # return(Q_expected_full_values)                  
 
     def soft_update(self, local_model, target_model, tau):
         """Soft update model parameters.
