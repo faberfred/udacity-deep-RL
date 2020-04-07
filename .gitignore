@@ -107,3 +107,5 @@ gym/
 Intro-to-RL-bookdraft2018.pdf
 dqn/Human_Level_Control_through_Deep_Reinforcement_Learning.zip
 p1_navigation/Banana_Linux.zip
+
+dqn/exercise/checkpoint.pth
