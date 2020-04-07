@@ -9,11 +9,11 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 BUFFER_SIZE = int(1e5)  # replay buffer size
-BATCH_SIZE = 2          # minibatch size
+BATCH_SIZE = 64         # minibatch size
 GAMMA = 0.99            # discount factor
 TAU = 1e-3              # for soft update of target parameters
 LR = 5e-4               # learning rate 
-UPDATE_EVERY = 1        # how often to update the network -> this is variable C within the DQN paper
+UPDATE_EVERY = 4        # how often to update the network -> this is variable C within the DQN paper
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -154,11 +154,6 @@ class Agent():
 
         # ------------------- update target network ------------------- #
         self.soft_update(self.qnetwork_local, self.qnetwork_target, TAU)          
-        
-        
-
-        # ------------------- update target network ------------------- #
-        self.soft_update(self.qnetwork_local, self.qnetwork_target, TAU)   
 
         # return statement for debug purposes
         # return(Q_expected_test)                  
