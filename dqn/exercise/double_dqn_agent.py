@@ -99,6 +99,8 @@ class Agent():
 
     def learn(self, experiences, gamma):
         """Update value parameters using given batch of experience tuples.
+        
+           Double-Deep-Q-Network implementation according to van Hasselt et al., 2015
 
         Params
         ======
@@ -109,12 +111,19 @@ class Agent():
 
         ## compute and minimize the loss
         
-        """ Get max predicted Q indices (for next states) from target model
+        """ Compute Q targets for next states 
         
-            detach(): return a new Tensor (it does not change the current one) that does not share the history of the original Tensor /  detached from the current graph.(no autograd)
+            For the Double-Deep-Q-Networt implementation: 
+        
+            1. Get the indices of the max predicted Q values for the next states from the online model / online network 
+            2. Use these indices to get the max Q values from the target model / target network
+        
+            detach(): return a new Tensor (it does not change the current one) that does not share the history of the 
+            original Tensor / detached from the current graph.(no autograd)
             .detach() returns a new tensor without history!
             
-            torch.max(input, dim, keepdim=False, out=None) -> (Tensor, LongTensor): Returns a namedtuple (values, indices) where values is the maximum value of each row of the input tensor in the given dimension dim. And indices is the index location of each maximum value found (argmax).
+            torch.max(input, dim, keepdim=False, out=None) -> (Tensor, LongTensor): Returns a namedtuple (values, indices) where values is the maximum 
+            value of each row of the input tensor in the given dimension dim. And indices is the index location of each maximum value found (argmax).
             .max(1)[0] returns the maximum value of the 1st dimension
             
             torch.unsqueeze(input, dim, out=None) → Tensor: Returns a new tensor with a dimension of size one inserted at the specified position.
@@ -123,21 +132,16 @@ class Agent():
             Q_targets_next is a column vector of size BATCH_SIZE with the max action values from each forwarded next_state!
        
         """
-#        Q_targets_next = self.qnetwork_target(next_states).detach().max(1)[0].unsqueeze(1)
-
-        # get the index of the max value but NOT the value from qnetwork_target
-        # Q_targets_next_index = self.qnetwork_target(next_states).detach().max(1)[1].unsqueeze(1)
-         # Q_targets_next_test = self.qnetwork_target(next_states).detach().max(1)[0].unsqueeze(1)
-        
-        # get the index of the max value but NOT the value from qnetwork_local 
+        # Get the index of the max value but NOT the value from qnetwork_local 
         Q_expected_next_index = self.qnetwork_local(next_states).detach().max(1)[1].unsqueeze(1)
         
+        # Use these indices to get the max Q values from the target model / target network
         Q_targets_next = self.qnetwork_target(next_states).gather(1, Q_expected_next_index)
         
-        # Q_targets_next = Q_expected_full_values.gather(1, Q_targets_next_index)
         
-        
-        """ Compute Q targets for current states 
+        """ Compute Q targets for current states:
+            
+            Use Q_targets_next to compute the current Q targets
         
             if done == 1 there will be no next state -> Q_targets is just the reward
             otherwise it's the immediate reward + discount factor * the estimated Q_target of the next state
@@ -149,18 +153,22 @@ class Agent():
 
         """ Get expected Q values from local model
         
-            torch.gather(input, dim, index, out=None, sparse_grad=False) → Tensor: Gathers values along an axis specified by dim.
             Q_expected_full_values has the Q-values / action values of a pass trough / forward run throug the network qnetwork_local
             Q_expected_full_values has dimension 0 = BATCH_SIZE and dimension 1 = size of action space
             
-            gather(1, actions) extracts the values out of Q_expected_full_values at position specified in action! If action has value 3 -> get the value from index 3 out of Q_expected_full_values
+            torch.gather(input, dim, index, out=None, sparse_grad=False) → Tensor: Gathers values along an axis specified by dim.
+            gather(1, actions) extracts the values out of Q_expected_full_values at the position specified in action! 
+            If action has value 3 -> get the value from index 3 out of Q_expected_full_values
             Q_expected has dimension 0 = BATCH_SIZE and dimension 1 = 1
         
         """
-
+        # Get all Q-values of qnetwork_local
         Q_expected_full_values = self.qnetwork_local(states)
+        
+        # Extract the Q-values accorting to actions (=indices of the values)
         Q_expected = Q_expected_full_values.gather(1, actions)
         
+        # The two previous steps can be done within one step
         # Q_expected = self.qnetwork_local(states).gather(1, actions)
 
         # Compute loss -> use the mean sqared error loss function (from torch.nn.functional)
