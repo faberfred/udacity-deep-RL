@@ -30,4 +30,4 @@ The operating system is `ubuntu 18.04`.
 Unity 2019.3 has been installed on the computer.
 The Unity environment is `Banana_Linux/Banana.x86_64` and has been provided by Udacity. 
 
-**Train the agent by executing the whole jupyter notebook from beginning to the end**
+**Train the agent by executing the whole jupyter notebook from the beginning to the end**
