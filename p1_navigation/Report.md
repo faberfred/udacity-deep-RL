@@ -1,8 +1,5 @@
 [//]: # (Image References)
 
-[image1]: https://user-images.githubusercontent.com/10624937/42135619-d90f2f28-7d12-11e8-8823-82b970a54d7e.gif "Trained Agent"
-[image2]: https://github.com/faberfred/udacity-deep-RL/blob/master/p1_navigation/training_results_ddqn.png "Training results"
-
 # Project 1: Navigation - Report
 
 ### Settings
@@ -58,8 +55,14 @@ The starting value of epsilon, for epsilon-greedy action selection is 1.0.
 The minimum value of epsilon is 0.1
 The multiplicative factor (per episode) for decreasing epsilon is 0.995.
 
-The result of the training is shown below: 
+### Result
 
-![Training results][image2]
+The result of the training is shown in the plot below: 
+
+![Training results](./training_results_ddqn.png  "Training results")
 
 For training purposses the score has been raised to +14.
+
+### Further improvements
+
+The agent can be further improved by incorporating the Dueling Double-DQN and the Prioritized Experience Replay techniques. 
