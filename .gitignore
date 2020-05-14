@@ -121,3 +121,6 @@ p1_navigation/Navigation_project.zip
 p2_continuous-control/Reacher_Linux.zip
 p2_continuous-control/Reacher_Linux/
 p2_continuous-control/Reacher_Linux_Version2.zip
+
+# PPO
+proximal-policy-optimization/REINFORCE.policy
